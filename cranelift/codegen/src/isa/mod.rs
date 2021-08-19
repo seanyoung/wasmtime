@@ -92,6 +92,8 @@ use legacy::x86;
 
 #[cfg(feature = "riscv")]
 use legacy::riscv;
+#[cfg(feature = "bpf")]
+mod bpf;
 
 pub mod unwind;
 
