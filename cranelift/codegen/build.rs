@@ -42,7 +42,7 @@ fn main() {
     if isas.is_empty() || host_isa {
         // Try to match native target.
         let target_name = target_triple.split('-').next().unwrap();
-        let isa = meta::isa_from_arch(&target_name).expect("error when identifying target");
+        let isa = meta::isa_from_arch(target_name).expect("error when identifying target");
         println!("cargo:rustc-cfg=feature=\"{}\"", isa);
         isas.push(isa);
     }
@@ -200,6 +200,8 @@ fn get_isle_compilations(
 
     let src_isa_risc_v =
         make_isle_source_path_relative(&cur_dir, crate_dir.join("src").join("isa").join("riscv64"));
+    let src_isa_bpf =
+        make_isle_source_path_relative(&cur_dir, crate_dir.join("src").join("isa").join("bpf"));
     // This is a set of ISLE compilation units.
     //
     // The format of each entry is:
@@ -278,6 +280,18 @@ fn get_isle_compilations(
                     src_isa_risc_v.join("inst.isle"),
                     src_isa_risc_v.join("inst_vector.isle"),
                     src_isa_risc_v.join("lower.isle"),
+                ],
+                untracked_inputs: vec![clif_lower_isle.clone()],
+            },
+            // The bpf instruction selector.
+            IsleCompilation {
+                output: out_dir.join("isle_bpf.rs"),
+                inputs: vec![
+                    prelude_isle.clone(),
+                    prelude_lower_isle.clone(),
+                    src_isa_bpf.join("inst.isle"),
+                    // src_isa_bpf.join("inst_vector.isle"),
+                    // src_isa_bpf.join("lower.isle"),
                 ],
                 untracked_inputs: vec![clif_lower_isle.clone()],
             },

@@ -813,7 +813,7 @@ fn test_typevar_builder_too_high_bound_panic() {
 #[test]
 #[should_panic]
 fn test_typevar_builder_inverted_bounds_panic() {
-    TypeSetBuilder::new().ints(32..16).build();
+    TypeSetBuilder::new().ints(16..32).build();
 }
 
 #[test]

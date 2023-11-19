@@ -1,0 +1,55 @@
+;; Instruction formats
+(type MInst
+  (enum
+    ;; BPF_ALU (64 bits)
+
+    ;; ALU Register/register
+    (AluRR
+        (op AluOpcode)
+        (src Reg)
+        (dst Reg))
+
+    ;; Alu register immediate
+    (AluRI
+        (op AluOpcode)
+        (src Reg)
+        (imm Imm32))
+    ;;
+  )
+)
+
+(type Imm20 (primitive Imm20))
+(type Imm32 (primitive Imm32))
+
+(type AluOpcode
+  (enum
+    (Add)
+    (Sub)
+    (Mul)
+    (Div)
+    (SDiv)
+    (Or)
+    (And)
+    (Lsh)
+    (Rsh)
+    (Neg)
+    (Mod)
+    (SMod)
+    (Xor)
+    (Mov)
+    (MovSx (size Size))
+    (Arsh)
+    (HToLe (size Size))
+    (HToBe (size Size))
+    (Bswap (size Size))
+  )
+)
+
+(type Size
+  (enum
+    (Word)
+    (HalfWord)
+    (Byte)
+    (DoubleWord)
+  )
+)

@@ -9,6 +9,7 @@
 //!         sudo perf inject -v -j -i perf.data -o perf.jit.data
 //!     Report
 //!         sudo perf report -i perf.jit.data -F+period,srcline
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};

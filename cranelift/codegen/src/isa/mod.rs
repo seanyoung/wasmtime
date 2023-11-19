@@ -74,6 +74,9 @@ pub mod riscv64;
 #[cfg(feature = "s390x")]
 mod s390x;
 
+//#[cfg(feature = "bpf")]
+mod bpf;
+
 pub mod unwind;
 
 mod call_conv;
@@ -110,7 +113,7 @@ pub fn lookup(triple: Triple) -> Result<Builder, LookupError> {
 /// The string names of all the supported, but possibly not enabled, architectures. The elements of
 /// this slice are suitable to be passed to the [lookup_by_name] function to obtain the default
 /// configuration for that architecture.
-pub const ALL_ARCHITECTURES: &[&str] = &["x86_64", "aarch64", "s390x", "riscv64"];
+pub const ALL_ARCHITECTURES: &[&str] = &["x86_64", "aarch64", "s390x", "riscv64", "bpf"];
 
 /// Look for a supported ISA with the given `name`.
 /// Return a builder that can create a corresponding `TargetIsa`.

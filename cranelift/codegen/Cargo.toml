@@ -48,7 +48,7 @@ cranelift-codegen-meta = { path = "meta", version = "0.105.0" }
 cranelift-isle = { path = "../isle/isle", version = "=0.105.0" }
 
 [features]
-default = ["std", "unwind", "host-arch", "timing"]
+default = ["std", "unwind", "host-arch", "timing", "bpf"]
 
 # The "std" feature enables use of libstd. The "core" feature enables use
 # of some minimal std-like replacement libraries. At least one of these two
@@ -77,6 +77,7 @@ x86 = []
 arm64 = []
 s390x = []
 riscv64 = []
+bpf = []
 # Enable the ISA target for the host machine
 host-arch = []
 
@@ -85,7 +86,8 @@ all-arch = [
     "x86",
     "arm64",
     "s390x",
-    "riscv64"
+    "riscv64",
+    "bpf"
 ]
 
 # For dependent crates that want to serialize some parts of cranelift

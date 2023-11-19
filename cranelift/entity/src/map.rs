@@ -1,4 +1,5 @@
 //! Densely numbered entity references as mapping keys.
+#![allow(clippy::derived_hash_with_manual_eq)]
 
 use crate::iter::{Iter, IterMut};
 use crate::keys::Keys;
