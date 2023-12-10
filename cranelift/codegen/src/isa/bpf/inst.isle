@@ -3,22 +3,103 @@
   (enum
     ;; BPF_ALU (64 bits)
 
-    ;; ALU Register/register
-    (AluRR
-        (op AluOpcode)
-        (src Reg)
-        (dst Reg))
+    ;; LD/ST
+    (LdAbs
+      (size Size)
+      (imm Imm32))
 
-    ;; Alu register immediate
+    (LdInd
+      (index Reg)
+      (size Size)
+      (imm Imm32))
+
+    (LdDwImm
+      (dst Reg)
+      (imm Imm32))
+
+    (LdX
+      (dst Reg)
+      (index Reg)
+      (size Size)
+      (offset Imm16))
+
+    (StImm
+      (value Imm32)
+      (index Reg)
+      (size Size)
+      (offset Imm16))
+
+    (StReg
+      (value Reg)
+      (index Reg)
+      (size Size)
+      (offset Imm16))
+
+    ;; ALU Register/register
+    (MovImm64
+      (dst Reg)
+      (imm Imm64))
+
+    (AluRR
+      (op AluOpcode)
+      (src Reg)
+      (dst Reg))
+
     (AluRI
-        (op AluOpcode)
-        (src Reg)
-        (imm Imm32))
-    ;;
+      (op AluOpcode)
+      (src Reg)
+      (imm Imm32))
+
+    ;; Alu 32 bit
+    (AluRR32
+      (op AluOpcode)
+      (src Reg)
+      (dst Reg))
+
+    (AluRI32
+      (op AluOpcode)
+      (src Reg)
+      (imm Imm32))
+
+    ;; Jump
+    (Jmp
+      (offset Imm16))
+
+    (JmpCondRR
+      (cond JmpCond)
+      (src Reg)
+      (dst Reg)
+      (offset Imm16))
+
+    (JmpCondRI
+      (cond JmpCond)
+      (src Reg)
+      (imm Imm32)
+      (offset Imm16))
+
+    (JmpCondRR32
+      (cond JmpCond)
+      (src Reg)
+      (dst Reg)
+      (offset Imm16))
+
+    (JmpCondRI32
+      (cond JmpCond)
+      (src Reg)
+      (imm Imm32)
+      (offset Imm16))
+
+    (Call
+      (imm Imm32))
+
+    (TailCall
+      (imm Imm32))
+
+    (Exit)
   )
 )
 
-(type Imm20 (primitive Imm20))
+(type Imm16 (primitive Imm16))
 (type Imm32 (primitive Imm32))
 
 (type AluOpcode
@@ -51,5 +132,21 @@
     (HalfWord)
     (Byte)
     (DoubleWord)
+  )
+)
+
+(type JmpCond
+  (enum
+    (Eq)
+    (Ne)
+    (Lt)
+    (Le)
+    (Gt)
+    (Ge)
+    (Slt)
+    (Sle)
+    (Sgt)
+    (Sge)
+    (Set)
   )
 )
