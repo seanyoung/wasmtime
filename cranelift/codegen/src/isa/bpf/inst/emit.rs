@@ -2,11 +2,67 @@
 
 use crate::binemit::StackMap;
 use crate::ir::{self, LibCall, RelSourceLoc, TrapCode};
-use crate::isa::bpf::inst::*;
+use crate::isa::bpf::{abi::BPFABIMachineSpec, inst::*};
 use crate::machinst::{AllocationConsumer, Reg, Writable};
 use crate::trace;
 use cranelift_control::ControlPlane;
 use regalloc2::Allocation;
+
+/// State carried between emissions of a sequence of instructions.
+#[derive(Default, Clone, Debug)]
+pub struct EmitState {
+    pub(crate) initial_sp_offset: i64,
+    pub(crate) virtual_sp_offset: i64,
+    /// Safepoint stack map for upcoming instruction, as provided to `pre_safepoint()`.
+    stack_map: Option<StackMap>,
+    /// Current source-code location corresponding to instruction to be emitted.
+    cur_srcloc: RelSourceLoc,
+    /// Only used during fuzz-testing. Otherwise, it is a zero-sized struct and
+    /// optimized away at compiletime. See [cranelift_control].
+    ctrl_plane: ControlPlane,
+}
+
+impl MachInstEmitState<Inst> for EmitState {
+    fn new(abi: &Callee<BPFABIMachineSpec>, ctrl_plane: ControlPlane) -> Self {
+        EmitState {
+            virtual_sp_offset: 0,
+            initial_sp_offset: abi.frame_size() as i64,
+            stack_map: None,
+            cur_srcloc: Default::default(),
+            ctrl_plane,
+        }
+    }
+
+    fn pre_safepoint(&mut self, stack_map: StackMap) {
+        self.stack_map = Some(stack_map);
+    }
+
+    fn pre_sourceloc(&mut self, srcloc: RelSourceLoc) {
+        self.cur_srcloc = srcloc;
+    }
+
+    fn ctrl_plane_mut(&mut self) -> &mut ControlPlane {
+        &mut self.ctrl_plane
+    }
+
+    fn take_ctrl_plane(self) -> ControlPlane {
+        self.ctrl_plane
+    }
+}
+
+impl EmitState {
+    fn take_stack_map(&mut self) -> Option<StackMap> {
+        self.stack_map.take()
+    }
+
+    fn clear_post_insn(&mut self) {
+        self.stack_map = None;
+    }
+
+    fn cur_srcloc(&self) -> RelSourceLoc {
+        self.cur_srcloc
+    }
+}
 
 pub struct EmitInfo {
     shared_flag: settings::Flags,

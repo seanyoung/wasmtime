@@ -37,57 +37,57 @@
 
     ;; ALU Register/register
     (MovImm64
-      (dst Reg)
+      (rd Reg)
       (imm Imm64))
 
     (AluRR
       (op AluOpcode)
-      (src Reg)
-      (dst Reg))
+      (rs Reg)
+      (rd Reg))
 
     (AluRI
       (op AluOpcode)
-      (src Reg)
+      (rd Reg)
       (imm Imm32))
 
     ;; Alu 32 bit
     (AluRR32
       (op AluOpcode)
-      (src Reg)
-      (dst Reg))
+      (rs Reg)
+      (rd Reg))
 
     (AluRI32
       (op AluOpcode)
-      (src Reg)
+      (rd Reg)
       (imm Imm32))
 
     ;; Jump
     (Jmp
-      (offset Imm16))
+      (label MachLabel))
 
     (JmpCondRR
       (cond JmpCond)
-      (src Reg)
-      (dst Reg)
-      (offset Imm16))
+      (rs1 Reg)
+      (rs2 Reg)
+      (label MachLabel))
 
     (JmpCondRI
       (cond JmpCond)
-      (src Reg)
+      (rs Reg)
       (imm Imm32)
-      (offset Imm16))
+      (label MachLabel))
 
     (JmpCondRR32
       (cond JmpCond)
-      (src Reg)
-      (dst Reg)
-      (offset Imm16))
+      (rs1 Reg)
+      (rs2 Reg)
+      (label MachLabel))
 
     (JmpCondRI32
       (cond JmpCond)
-      (src Reg)
+      (rs Reg)
       (imm Imm32)
-      (offset Imm16))
+      (label MachLabel))
 
     (Call
       (imm Imm32))
@@ -96,6 +96,9 @@
       (imm Imm32))
 
     (Exit)
+
+    ;; Mov with src == dst is a nop in linux kernel jitter
+    (Nop)
   )
 )
 

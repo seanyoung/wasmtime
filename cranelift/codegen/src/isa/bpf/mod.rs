@@ -1,12 +1,11 @@
 //! BPF Instruction Set Architecture.
 
+use self::abi::BPFABIMachineSpec;
 pub use self::inst::{EmitInfo, EmitState, Inst};
 
 use super::{OwnedTargetIsa, TargetIsa};
 use crate::dominator_tree::DominatorTree;
 use crate::ir::{types, Function, Type};
-#[cfg(feature = "unwind")]
-use crate::isa::unwind::systemv;
 use crate::isa::x64::settings as x64_settings;
 use crate::isa::{Builder as IsaBuilder, FunctionAlignment};
 use crate::machinst::{
@@ -20,6 +19,7 @@ use core::fmt;
 use cranelift_control::ControlPlane;
 use target_lexicon::Triple;
 
+mod abi;
 pub(crate) mod inst;
 mod lower;
 
@@ -48,7 +48,7 @@ impl BPFBackend {
     ) -> CodegenResult<(VCode<inst::Inst>, regalloc2::Output)> {
         // This performs lowering to VCode, register-allocates the code, computes
         // block layout and finalizes branches. The result is ready for binary emission.
-        let emit_info = EmitInfo::new(self.flags.clone(), self.x64_flags.clone());
+        let emit_info = EmitInfo::new(self.flags.clone());
         let sigs = SigSet::new::<abi::BPFABIMachineSpec>(func, &self.flags)?;
         let abi = abi::BPFCallee::new(func, self, &self.x64_flags, &sigs)?;
         compile::compile::<Self>(func, domtree, self, abi, emit_info, sigs, ctrl_plane)
@@ -148,6 +148,15 @@ impl TargetIsa for BPFBackend {
 
     fn has_x86_pmaddubsw_lowering(&self) -> bool {
         self.x64_flags.use_ssse3()
+    }
+
+    #[cfg(feature = "unwind")]
+    fn emit_unwind_info(
+        &self,
+        result: &CompiledCode,
+        kind: crate::isa::unwind::UnwindInfoKind,
+    ) -> CodegenResult<Option<crate::isa::unwind::UnwindInfo>> {
+        Ok(None)
     }
 }
 
