@@ -9,16 +9,16 @@
       (imm Offset32))
 
     (LdInd
-      (index Reg)
+      (index WritableReg)
       (size Size)
       (imm Offset32))
 
     (LdDwImm
-      (dst Reg)
+      (dst WritableReg)
       (imm Imm64))
 
     (LdX
-      (dst Reg)
+      (dst WritableReg)
       (index Reg)
       (size Size)
       (offset Offset32))
@@ -37,28 +37,28 @@
 
     ;; ALU Register/register
     (MovImm64
-      (rd Reg)
+      (rd WritableReg)
       (imm Imm64))
 
     (AluRR
       (op AluOpcode)
       (rs Reg)
-      (rd Reg))
+      (rd WritableReg))
 
     (AluRI
       (op AluOpcode)
-      (rd Reg)
+      (rd WritableReg)
       (imm Imm64))
 
     ;; Alu 32 bit
     (AluRR32
       (op AluOpcode)
       (rs Reg)
-      (rd Reg))
+      (rd WritableReg))
 
     (AluRI32
       (op AluOpcode)
-      (rd Reg)
+      (rd WritableReg)
       (imm Imm64))
 
     ;; Jump
@@ -97,8 +97,21 @@
 
     (Exit)
 
+    ;; A dummy use, useful to keep a value alive.
+    (DummyUse
+      (reg Reg))
+
+    (Nop0)
     ;; Mov with src == dst is a nop in linux kernel jitter
-    (Nop)
+    (Nop8)
+
+    ;; A pseudo-instruction that captures register arguments in vregs.
+    (Args
+      (args VecArgPair))
+
+    ;; A pseudo-instruction that moves vregs to return registers.
+    (Rets
+      (rets VecRetPair))
   )
 )
 

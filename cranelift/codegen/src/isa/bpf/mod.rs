@@ -6,7 +6,7 @@ pub use self::inst::{EmitInfo, EmitState, Inst};
 use super::{OwnedTargetIsa, TargetIsa};
 use crate::dominator_tree::DominatorTree;
 use crate::ir::{types, Function, Type};
-use crate::isa::x64::settings as x64_settings;
+use crate::isa::bpf::settings as bpf_settings;
 use crate::isa::{Builder as IsaBuilder, FunctionAlignment};
 use crate::machinst::{
     compile, CompiledCode, CompiledCodeStencil, MachInst, MachTextSectionBuilder, Reg, SigSet,
@@ -22,21 +22,22 @@ use target_lexicon::Triple;
 mod abi;
 pub(crate) mod inst;
 mod lower;
+mod settings;
 
 /// An BPF backend.
 pub(crate) struct BPFBackend {
     triple: Triple,
     flags: Flags,
-    x64_flags: x64_settings::Flags,
+    bpf_flags: bpf_settings::Flags,
 }
 
 impl BPFBackend {
     /// Create a new BPF backend with the given (shared) flags.
-    fn new_with_flags(triple: Triple, flags: Flags, x64_flags: x64_settings::Flags) -> Self {
+    fn new_with_flags(triple: Triple, flags: Flags, bpf_flags: bpf_settings::Flags) -> Self {
         Self {
             triple,
             flags,
-            x64_flags,
+            bpf_flags,
         }
     }
 
@@ -50,7 +51,7 @@ impl BPFBackend {
         // block layout and finalizes branches. The result is ready for binary emission.
         let emit_info = EmitInfo::new(self.flags.clone());
         let sigs = SigSet::new::<abi::BPFABIMachineSpec>(func, &self.flags)?;
-        let abi = abi::BPFCallee::new(func, self, &self.x64_flags, &sigs)?;
+        let abi = abi::BPFCallee::new(func, self, &self.bpf_flags, &sigs)?;
         compile::compile::<Self>(func, domtree, self, abi, emit_info, sigs, ctrl_plane)
     }
 }
@@ -93,7 +94,7 @@ impl TargetIsa for BPFBackend {
     }
 
     fn isa_flags(&self) -> Vec<shared_settings::Value> {
-        self.x64_flags.iter().collect()
+        self.bpf_flags.iter().collect()
     }
 
     fn dynamic_vector_bytes(&self, _dyn_ty: Type) -> u32 {
@@ -127,27 +128,23 @@ impl TargetIsa for BPFBackend {
     }
 
     fn has_native_fma(&self) -> bool {
-        self.x64_flags.use_fma()
+        false
     }
 
     fn has_x86_blendv_lowering(&self, ty: Type) -> bool {
-        // The `blendvpd`, `blendvps`, and `pblendvb` instructions are all only
-        // available from SSE 4.1 and onwards. Otherwise the i16x8 type has no
-        // equivalent instruction which only looks at the top bit for a select
-        // operation, so that always returns `false`
-        self.x64_flags.use_sse41() && ty != types::I16X8
+        false
     }
 
     fn has_x86_pshufb_lowering(&self) -> bool {
-        self.x64_flags.use_ssse3()
+        false
     }
 
     fn has_x86_pmulhrsw_lowering(&self) -> bool {
-        self.x64_flags.use_ssse3()
+        false
     }
 
     fn has_x86_pmaddubsw_lowering(&self) -> bool {
-        self.x64_flags.use_ssse3()
+        false
     }
 
     #[cfg(feature = "unwind")]
@@ -174,7 +171,7 @@ impl fmt::Display for BPFBackend {
 pub(crate) fn isa_builder(triple: Triple) -> IsaBuilder {
     IsaBuilder {
         triple,
-        setup: x64_settings::builder(),
+        setup: bpf_settings::builder(),
         constructor: isa_constructor,
     }
 }
@@ -184,7 +181,7 @@ fn isa_constructor(
     shared_flags: Flags,
     builder: &shared_settings::Builder,
 ) -> CodegenResult<OwnedTargetIsa> {
-    let isa_flags = x64_settings::Flags::new(&shared_flags, builder);
+    let isa_flags = bpf_settings::Flags::new(&shared_flags, builder);
     let backend = BPFBackend::new_with_flags(triple, shared_flags, isa_flags);
     Ok(backend.wrapped())
 }

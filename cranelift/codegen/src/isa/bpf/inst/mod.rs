@@ -53,7 +53,7 @@ impl MachInst for Inst {
 
     fn is_move(&self) -> Option<(Writable<Reg>, Reg)> {
         match self {
-            Inst::AluRR { rd,  rs, op, .. } if op == AluOpcode::Mov => Some((rd.clone(), rs.clone())),
+            Inst::AluRR { rd,  rs, op, .. } if *op == AluOpcode::Mov => Some((rd.clone(), rs.clone())),
             _ => None,
         }
     }
@@ -66,10 +66,7 @@ impl MachInst for Inst {
     }
 
     fn is_trap(&self) -> bool {
-        match self {
-            Self::Udf { .. } => true,
-            _ => false,
-        }
+        false
     }
 
     fn is_args(&self) -> bool {
@@ -114,9 +111,9 @@ impl MachInst for Inst {
         if preferred_size == 0 {
             return Inst::Nop0;
         }
-        // We can't give a NOP (or any insn) < 4 bytes.
+        // We can't give a NOP (or any insn) < 8 bytes.
         assert!(preferred_size >= 8);
-        Inst::Nop
+        Inst::Nop8
     }
 
     fn rc_for_type(ty: Type) -> CodegenResult<(&'static [RegClass], &'static [Type])> {
@@ -200,8 +197,8 @@ fn bpf_get_operands<F: Fn(VReg) -> VReg>(inst: &Inst, collector: &mut OperandCol
             collector.reg_use(rs2);
         }
         &Inst::LdX { dst, index,.. } => {
-            collector.reg_def(index);
-            collector.reg_use(dst);            
+            collector.reg_def(dst);
+            collector.reg_use(index);            
         }
         &Inst::LdDwImm { dst, .. } => {
             collector.reg_def(dst);
@@ -242,7 +239,7 @@ impl MachInstLabelUse for LabelUse {
     fn max_pos_range(self) -> CodeOffset {
         match self {
             LabelUse::Call32 => u32::MAX,
-            LabelUse::Rel16 => i16::MAX * 8,
+            LabelUse::Rel16 => i16::MAX as u32 * 8,
         }
     }
 
@@ -250,7 +247,7 @@ impl MachInstLabelUse for LabelUse {
     fn max_neg_range(self) -> CodeOffset {
         match self {
             LabelUse::Call32 => u32::MAX,
-            LabelUse::Rel16 => i16::MIN.abs() * 8,
+            LabelUse::Rel16 => i16::MIN.abs() as u32 * 8,
         }
     }
 
