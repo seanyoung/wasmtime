@@ -319,11 +319,6 @@ impl LabelUse {
     }
 
     fn patch_raw_offset(self, buffer: &mut [u8], offset: i64) {
-        let insn = match self {
-            LabelUse::RVCJump => u16::from_le_bytes(buffer[..2].try_into().unwrap()) as u32,
-            _ => u32::from_le_bytes(buffer[..4].try_into().unwrap()),
-        };
-
         match self {
             LabelUse::Rel16 => {
                 let offset = offset as i16;

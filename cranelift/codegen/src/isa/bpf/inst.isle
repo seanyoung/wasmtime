@@ -6,34 +6,34 @@
     ;; LD/ST
     (LdAbs
       (size Size)
-      (imm Imm32))
+      (imm Offset32))
 
     (LdInd
       (index Reg)
       (size Size)
-      (imm Imm32))
+      (imm Offset32))
 
     (LdDwImm
       (dst Reg)
-      (imm Imm32))
+      (imm Imm64))
 
     (LdX
       (dst Reg)
       (index Reg)
       (size Size)
-      (offset Imm16))
+      (offset Offset32))
 
     (StImm
-      (value Imm32)
+      (value Imm64)
       (index Reg)
       (size Size)
-      (offset Imm16))
+      (offset Offset32))
 
     (StReg
       (value Reg)
       (index Reg)
       (size Size)
-      (offset Imm16))
+      (offset Offset32))
 
     ;; ALU Register/register
     (MovImm64
@@ -48,7 +48,7 @@
     (AluRI
       (op AluOpcode)
       (rd Reg)
-      (imm Imm32))
+      (imm Imm64))
 
     ;; Alu 32 bit
     (AluRR32
@@ -59,7 +59,7 @@
     (AluRI32
       (op AluOpcode)
       (rd Reg)
-      (imm Imm32))
+      (imm Imm64))
 
     ;; Jump
     (Jmp
@@ -74,7 +74,7 @@
     (JmpCondRI
       (cond JmpCond)
       (rs Reg)
-      (imm Imm32)
+      (imm Imm64)
       (label MachLabel))
 
     (JmpCondRR32
@@ -86,14 +86,14 @@
     (JmpCondRI32
       (cond JmpCond)
       (rs Reg)
-      (imm Imm32)
+      (imm Imm64)
       (label MachLabel))
 
     (Call
-      (imm Imm32))
+      (imm Imm64))
 
     (TailCall
-      (imm Imm32))
+      (imm Imm64))
 
     (Exit)
 
@@ -101,9 +101,6 @@
     (Nop)
   )
 )
-
-(type Imm16 (primitive Imm16))
-(type Imm32 (primitive Imm32))
 
 (type AluOpcode
   (enum
