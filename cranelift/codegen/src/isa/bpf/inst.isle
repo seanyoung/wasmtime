@@ -5,12 +5,12 @@
 
     ;; LD/ST
     (LdAbs
-      (size Size)
+      (ty Type)
       (imm Offset32))
 
     (LdInd
       (index WritableReg)
-      (size Size)
+      (ty Type)
       (imm Offset32))
 
     (LdDwImm
@@ -20,19 +20,19 @@
     (LdX
       (dst WritableReg)
       (index Reg)
-      (size Size)
+      (ty Type)
       (offset Offset32))
 
     (StImm
       (value Imm64)
       (index Reg)
-      (size Size)
+      (ty Type)
       (offset Offset32))
 
     (StReg
       (value Reg)
       (index Reg)
-      (size Size)
+      (ty Type)
       (offset Offset32))
 
     ;; ALU Register/register
@@ -51,20 +51,20 @@
       (imm Imm64))
 
     (Le
-      (size Size)
+      (ty Type)
       (rd WritableReg))
 
     (Be
-      (size Size)
+      (ty Type)
       (rd WritableReg))
     
     (MovSignExtent
-      (size Size)
+      (ty Type)
       (rs Reg)
       (rd WritableReg))
 
     (MovSignExtent32
-      (size Size)
+      (ty Type)
       (rs Reg)
       (rd WritableReg))
 
@@ -157,15 +157,6 @@
     (Xor)
     (Mov)
     (Arsh)
-  )
-)
-
-(type Size
-  (enum
-    (Word)
-    (HalfWord)
-    (Byte)
-    (DoubleWord)
   )
 )
 

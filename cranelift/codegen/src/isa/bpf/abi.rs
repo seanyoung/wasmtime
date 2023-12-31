@@ -435,38 +435,7 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         size: usize,
         mut alloc_tmp: F,
     ) -> SmallVec<[Self::I; 8]> {
-        let mut insts = SmallVec::new();
-        let arg0 = Writable::from_reg(x_reg(10));
-        let arg1 = Writable::from_reg(x_reg(11));
-        let arg2 = Writable::from_reg(x_reg(12));
-        let tmp = alloc_tmp(Self::word_type());
-        insts.extend(Inst::load_constant_u64(tmp, size as u64).into_iter());
-        insts.push(Inst::Call {
-            info: Box::new(CallInfo {
-                dest: ExternalName::LibCall(LibCall::Memcpy),
-                uses: smallvec![
-                    CallArgPair {
-                        vreg: dst,
-                        preg: arg0.to_reg()
-                    },
-                    CallArgPair {
-                        vreg: src,
-                        preg: arg1.to_reg()
-                    },
-                    CallArgPair {
-                        vreg: tmp.to_reg(),
-                        preg: arg2.to_reg()
-                    }
-                ],
-                defs: smallvec![],
-                clobbers: Self::get_regs_clobbered_by_call(call_conv),
-                opcode: Opcode::Call,
-                caller_callconv: call_conv,
-                callee_callconv: call_conv,
-                callee_pop_size: 0,
-            }),
-        });
-        insts
+        unimplemented!("struct args are not supported");
     }
 
     fn get_number_of_spillslots_for_value(
@@ -489,7 +458,7 @@ impl ABIMachineSpec for BPFABIMachineSpec {
 
     /// Get the nominal-SP-to-FP offset from an instruction-emission state.
     fn get_nominal_sp_to_fp(s: &EmitState) -> i64 {
-        s.nominal_sp_to_fp
+        0
     }
 
     fn get_machine_env(_flags: &settings::Flags, _call_conv: isa::CallConv) -> &MachineEnv {
