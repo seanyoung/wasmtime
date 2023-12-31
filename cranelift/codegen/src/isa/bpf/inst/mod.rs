@@ -216,6 +216,15 @@ fn bpf_get_operands<F: Fn(VReg) -> VReg>(inst: &Inst, collector: &mut OperandCol
             collector.reg_use(index);
             collector.reg_use(value);
         }
+        &Inst::Le { rd, ..} | &Inst::Be { rd, .. } => {
+            collector.reg_use(rd.to_reg());
+            collector.reg_def(rd);
+        }
+        &Inst::MovSignExtent {  rs, rd, .. } |
+        &Inst::MovSignExtent32 {  rs, rd, .. } => {
+            collector.reg_def(rd);
+            collector.reg_use(rs);
+        }
     }
 }
 

@@ -4,7 +4,7 @@ use crate::ir::immediates::Imm64;
 use crate::ir::{self, types, LibCall, MemFlags, Opcode, Signature, TrapCode, Type};
 use crate::ir::{types::*, ExternalName};
 use crate::isa;
-use crate::isa::bpf::lower::isle::generated_code::AluOpcode;
+use crate::isa::bpf::lower::isle::generated_code::{AluOpcode, Size};
 use crate::isa::{bpf::inst::*, unwind::UnwindInst, CallConv};
 use crate::machinst::abi::*;
 use crate::machinst::*;
@@ -164,7 +164,7 @@ impl ABIMachineSpec for BPFABIMachineSpec {
 
     fn fp_to_arg_offset(_call_conv: isa::CallConv, _flags: &settings::Flags) -> i64 {
         // lr fp.
-        16
+        0
     }
 
     fn gen_load_stack(mem: StackAMode, into_reg: Writable<Reg>, ty: Type) -> Inst {
@@ -212,7 +212,8 @@ impl ABIMachineSpec for BPFABIMachineSpec {
     }
 
     fn get_stacklimit_reg(_call_conv: isa::CallConv) -> Reg {
-        spilltmp_reg()
+        // not possible on bpf
+        unimplemented!();
     }
 
     fn gen_add_imm(
@@ -230,14 +231,8 @@ impl ABIMachineSpec for BPFABIMachineSpec {
     }
 
     fn gen_stack_lower_bound_trap(limit_reg: Reg) -> SmallInstVec<Inst> {
-        let mut insts = SmallVec::new();
-        insts.push(Inst::TrapIf {
-            cc: IntCC::UnsignedLessThan,
-            rs1: stack_reg(),
-            rs2: limit_reg,
-            trap_code: ir::TrapCode::StackOverflow,
-        });
-        insts
+        // bpf verifier already checks stack bounds
+        unimplemented!();
     }
 
     fn gen_get_stack_addr(mem: StackAMode, into_reg: Writable<Reg>, _ty: Type) -> Inst {
@@ -258,37 +253,11 @@ impl ABIMachineSpec for BPFABIMachineSpec {
     }
 
     fn gen_sp_reg_adjust(amount: i32) -> SmallInstVec<Inst> {
-        let mut insts = SmallVec::new();
-
-        if amount == 0 {
-            return insts;
-        }
-
-        if let Some(imm) = Imm12::maybe_from_i64(amount as i64) {
-            insts.push(Inst::AluRRImm12 {
-                alu_op: AluOPRRI::Addi,
-                rd: writable_stack_reg(),
-                rs: stack_reg(),
-                imm12: imm,
-            })
-        } else {
-            let tmp = writable_spilltmp_reg();
-            insts.extend(Inst::load_constant_u64(tmp, amount as i64 as u64));
-            insts.push(Inst::AluRRR {
-                alu_op: AluOPRRR::Add,
-                rd: writable_stack_reg(),
-                rs1: stack_reg(),
-                rs2: tmp.to_reg(),
-            });
-        }
-
-        insts
+        unimplemented!("bpf does not have a writable stack register");
     }
 
     fn gen_nominal_sp_adj(offset: i32) -> Inst {
-        Inst::VirtualSPOffsetAdj {
-            amount: offset as i64,
-        }
+        unimplemented!("bpf does not have a writable stack register");
     }
 
     fn gen_prologue_frame_setup(
@@ -297,91 +266,26 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         _isa_flags: &BpfFlags,
         frame_layout: &FrameLayout,
     ) -> SmallInstVec<Inst> {
-        let mut insts = SmallVec::new();
-
-        if frame_layout.setup_area_size > 0 {
-            // add  sp,sp,-16    ;; alloc stack space for fp.
-            // sd   ra,8(sp)     ;; save ra.
-            // sd   fp,0(sp)     ;; store old fp.
-            // mv   fp,sp        ;; set fp to sp.
-            insts.extend(Self::gen_sp_reg_adjust(-16));
-            insts.push(Self::gen_store_stack(
-                StackAMode::SPOffset(8, I64),
-                link_reg(),
-                I64,
-            ));
-            insts.push(Self::gen_store_stack(
-                StackAMode::SPOffset(0, I64),
-                fp_reg(),
-                I64,
-            ));
-
-            if flags.unwind_info() {
-                insts.push(Inst::Unwind {
-                    inst: UnwindInst::PushFrameRegs {
-                        offset_upward_to_caller_sp: frame_layout.setup_area_size,
-                    },
-                });
-            }
-            insts.push(Inst::Mov {
-                rd: writable_fp_reg(),
-                rm: stack_reg(),
-                ty: I64,
-            });
-        }
-
-        insts
+        // the bpf verifier figures out what frame size is needed and generates the setup for us
+        SmallVec::new()
     }
     /// reverse of gen_prologue_frame_setup.
     fn gen_epilogue_frame_restore(
         call_conv: isa::CallConv,
         _flags: &settings::Flags,
-        _isa_flags: &RiscvFlags,
+        _isa_flags: &BpfFlags,
         frame_layout: &FrameLayout,
     ) -> SmallInstVec<Inst> {
         let mut insts = SmallVec::new();
 
-        if frame_layout.setup_area_size > 0 {
-            insts.push(Self::gen_load_stack(
-                StackAMode::SPOffset(8, I64),
-                writable_link_reg(),
-                I64,
-            ));
-            insts.push(Self::gen_load_stack(
-                StackAMode::SPOffset(0, I64),
-                writable_fp_reg(),
-                I64,
-            ));
-            insts.extend(Self::gen_sp_reg_adjust(16));
-        }
-
-        if call_conv == isa::CallConv::Tail && frame_layout.stack_args_size > 0 {
-            insts.extend(Self::gen_sp_reg_adjust(
-                frame_layout.stack_args_size.try_into().unwrap(),
-            ));
-        }
-        insts.push(Inst::Ret {});
+        insts.push(Inst::Exit {});
 
         insts
     }
 
     fn gen_probestack(insts: &mut SmallInstVec<Self::I>, frame_size: u32) {
-        insts.extend(Inst::load_constant_u32(writable_a0(), frame_size as u64));
-        insts.push(Inst::Call {
-            info: Box::new(CallInfo {
-                dest: ExternalName::LibCall(LibCall::Probestack),
-                uses: smallvec![CallArgPair {
-                    vreg: a0(),
-                    preg: a0(),
-                }],
-                defs: smallvec![],
-                clobbers: PRegSet::empty(),
-                opcode: Opcode::Call,
-                callee_callconv: CallConv::SystemV,
-                caller_callconv: CallConv::SystemV,
-                callee_pop_size: 0,
-            }),
-        });
+        // stack overflows are verifier errors and not runtime errors, so
+        // no runtime code is needed.
     }
 
     fn gen_clobber_save(
@@ -574,7 +478,7 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         match rc {
             RegClass::Int => 1,
             RegClass::Float => 1,
-            RegClass::Vector => (isa_flags.min_vec_reg_size() / 8) as u32,
+            RegClass::Vector => unreachable!(),
         }
     }
 
@@ -654,25 +558,6 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         frame_size: u32,
         guard_size: u32,
     ) {
-        // Unroll at most n consecutive probes, before falling back to using a loop
-        const PROBE_MAX_UNROLL: u32 = 3;
-        // Number of probes that we need to perform
-        let probe_count = align_to(frame_size, guard_size) / guard_size;
-
-        // Must be a caller-saved register that is not an argument.
-        let tmp = match call_conv {
-            isa::CallConv::Tail => Writable::from_reg(x_reg(1)),
-            _ => Writable::from_reg(x_reg(28)), // t3
-        };
-
-        if probe_count <= PROBE_MAX_UNROLL {
-            Self::gen_probestack_unroll(insts, tmp, guard_size, probe_count)
-        } else {
-            insts.push(Inst::StackProbeLoop {
-                guard_size,
-                probe_count,
-                tmp,
-            });
-        }
+        // probestack does not make any sense on bpf
     }
 }

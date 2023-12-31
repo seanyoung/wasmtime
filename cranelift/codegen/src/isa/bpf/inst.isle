@@ -50,6 +50,24 @@
       (rd WritableReg)
       (imm Imm64))
 
+    (Le
+      (size Size)
+      (rd WritableReg))
+
+    (Be
+      (size Size)
+      (rd WritableReg))
+    
+    (MovSignExtent
+      (size Size)
+      (rs Reg)
+      (rd WritableReg))
+
+    (MovSignExtent32
+      (size Size)
+      (rs Reg)
+      (rd WritableReg))
+
     ;; Alu 32 bit
     (AluRR32
       (op AluOpcode)
@@ -112,7 +130,14 @@
     ;; A pseudo-instruction that moves vregs to return registers.
     (Rets
       (rets VecRetPair))
-  )
+
+    ;; A sign- or zero-extend operation.
+    (Extend
+      (rd WritableReg)
+      (rn Reg)
+      (signed bool)
+      (from_bits u8)
+      (to_bits u8)))
 )
 
 (type AluOpcode
@@ -131,11 +156,7 @@
     (SMod)
     (Xor)
     (Mov)
-    (MovSx (size Size))
     (Arsh)
-    (HToLe (size Size))
-    (HToBe (size Size))
-    (Bswap (size Size))
   )
 )
 
