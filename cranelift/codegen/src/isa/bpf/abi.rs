@@ -5,13 +5,13 @@ use crate::ir::{self, types, LibCall, MemFlags, Opcode, Signature, TrapCode, Typ
 use crate::ir::{types::*, ExternalName};
 use crate::isa;
 use crate::isa::bpf::lower::isle::generated_code::{AluOpcode, Size};
+use crate::isa::bpf::settings::Flags as BpfFlags;
 use crate::isa::{bpf::inst::*, unwind::UnwindInst, CallConv};
 use crate::machinst::abi::*;
 use crate::machinst::*;
 use crate::settings;
 use crate::{CodegenError, CodegenResult};
 use alloc::boxed::Box;
-use crate::isa::bpf::settings::Flags as BpfFlags;
 use alloc::vec::Vec;
 use regalloc2::{MachineEnv, PReg, PRegSet, VReg};
 use smallvec::{smallvec, SmallVec};
@@ -226,7 +226,11 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         if from_reg != into_reg.to_reg() {
             insts.push(Inst::gen_move(into_reg, from_reg, I64));
         }
-        insts.push(Inst::AluRI { op: AluOpcode::Add, rd: into_reg, imm: Imm64::new(imm.into()) });
+        insts.push(Inst::AluRI {
+            op: AluOpcode::Add,
+            rd: into_reg,
+            imm: Imm64::new(imm.into()),
+        });
         insts
     }
 
@@ -467,11 +471,7 @@ impl ABIMachineSpec for BPFABIMachineSpec {
     }
 
     fn get_regs_clobbered_by_call(call_conv_of_callee: isa::CallConv) -> PRegSet {
-        if call_conv_of_callee == isa::CallConv::Tail {
-            TAIL_CLOBBERS
-        } else {
-            DEFAULT_CLOBBERS
-        }
+        DEFAULT_CLOBBERS
     }
 
     fn compute_frame_layout(
@@ -484,37 +484,19 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         fixed_frame_storage_size: u32,
         outgoing_args_size: u32,
     ) -> FrameLayout {
-        let mut regs: Vec<Writable<RealReg>> = regs
-            .iter()
-            .cloned()
-            .filter(|r| is_reg_saved_in_prologue(call_conv, r.to_reg()))
-            .collect();
+        let mut regs: Vec<Writable<RealReg>> = regs.iter().cloned().collect();
 
         regs.sort();
 
         // Compute clobber size.
         let clobber_size = compute_clobber_size(&regs);
 
-        // Compute linkage frame size.
-        let setup_area_size = if flags.preserve_frame_pointers()
-            || !is_leaf
-            // The function arguments that are passed on the stack are addressed
-            // relative to the Frame Pointer.
-            || stack_args_size > 0
-            || clobber_size > 0
-            || fixed_frame_storage_size > 0
-        {
-            16 // FP, LR
-        } else {
-            0
-        };
-
         // Return FrameLayout structure.
         debug_assert!(outgoing_args_size == 0);
         FrameLayout {
-            stack_args_size,
-            setup_area_size,
-            clobber_size,
+            stack_args_size: 0,
+            setup_area_size: 0,
+            clobber_size: 0,
             fixed_frame_storage_size,
             outgoing_args_size,
             clobbered_callee_saves: regs,
@@ -528,5 +510,47 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         guard_size: u32,
     ) {
         // probestack does not make any sense on bpf
+    }
+}
+
+fn compute_clobber_size(clobbers: &[Writable<RealReg>]) -> u32 {
+    let mut clobbered_size = 0;
+    for reg in clobbers {
+        match reg.to_reg().class() {
+            RegClass::Int => {
+                clobbered_size += 8;
+            }
+            RegClass::Float => unimplemented!("Float Clobbered"),
+            RegClass::Vector => unimplemented!("Vector Clobbered"),
+        }
+    }
+    align_to(clobbered_size, 16)
+}
+
+const DEFAULT_CLOBBERS: PRegSet = default_clobbers();
+
+const fn default_clobbers() -> PRegSet {
+    PRegSet::empty()
+        .with(px_reg(0))
+        .with(px_reg(1))
+        .with(px_reg(2))
+        .with(px_reg(3))
+        .with(px_reg(4))
+}
+
+fn create_reg_enviroment() -> MachineEnv {
+    let preferred_regs_by_class: [Vec<PReg>; 3] = {
+        let registers: Vec<PReg> = (0..=9).map(px_reg).collect();
+
+        [registers, Vec::new(), Vec::new()]
+    };
+
+    let non_preferred_regs_by_class: [Vec<PReg>; 3] = { [Vec::new(), Vec::new(), Vec::new()] };
+
+    MachineEnv {
+        preferred_regs_by_class,
+        non_preferred_regs_by_class,
+        fixed_stack_slots: vec![],
+        scratch_by_class: [None, None, None],
     }
 }

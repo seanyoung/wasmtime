@@ -15,11 +15,13 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt::Write;
 use std::string::{String, ToString};
 
-pub use crate::isa::bpf::lower::isle::generated_code::MInst as Inst;
 use crate::isa::bpf::lower::isle::generated_code::AluOpcode;
+pub use crate::isa::bpf::lower::isle::generated_code::MInst as Inst;
 
 pub mod emit;
+pub(crate) mod regs;
 pub use self::emit::*;
+pub(crate) use self::regs::*;
 
 impl MachInst for Inst {
     type LabelUse = LabelUse;
@@ -53,7 +55,9 @@ impl MachInst for Inst {
 
     fn is_move(&self) -> Option<(Writable<Reg>, Reg)> {
         match self {
-            Inst::AluRR { rd,  rs, op, .. } if *op == AluOpcode::Mov => Some((rd.clone(), rs.clone())),
+            Inst::AluRR { rd, rs, op, .. } if *op == AluOpcode::Mov => {
+                Some((rd.clone(), rs.clone()))
+            }
             _ => None,
         }
     }
@@ -90,12 +94,12 @@ impl MachInst for Inst {
 
     fn is_mem_access(&self) -> bool {
         match self {
-            &Inst::LdAbs { .. } |
-            &Inst::LdDwImm { .. } | 
-            &Inst::LdInd { .. } |
-            &Inst::StImm { .. } |
-            &Inst::StReg { .. } => true,
-            _ => false
+            &Inst::LdAbs { .. }
+            | &Inst::LdDwImm { .. }
+            | &Inst::LdInd { .. }
+            | &Inst::StImm { .. }
+            | &Inst::StReg { .. } => true,
+            _ => false,
         }
     }
 
@@ -175,30 +179,26 @@ impl MachInst for Inst {
 
 fn bpf_get_operands<F: Fn(VReg) -> VReg>(inst: &Inst, collector: &mut OperandCollector<'_, F>) {
     match inst {
-        &Inst::AluRR32 {  rd, rs, .. } | 
-        &Inst::AluRR { rd, rs, .. } => {
+        &Inst::AluRR32 { rd, rs, .. } | &Inst::AluRR { rd, rs, .. } => {
             collector.reg_def(rd);
             collector.reg_use(rs);
         }
-        &Inst::AluRI32 { rd, .. } | 
-        &Inst::AluRI { rd, .. } => {
+        &Inst::AluRI32 { rd, .. } | &Inst::AluRI { rd, .. } => {
             collector.reg_def(rd);
         }
         &Inst::MovImm64 { rd, .. } => {
             collector.reg_def(rd);
         }
-        &Inst::JmpCondRI { rs, .. } |
-        &Inst::JmpCondRI32 { rs, .. } => {
+        &Inst::JmpCondRI { rs, .. } | &Inst::JmpCondRI32 { rs, .. } => {
             collector.reg_use(rs);
         }
-        &Inst::JmpCondRR { rs1, rs2, .. } |
-        &Inst::JmpCondRR32 { rs1, rs2, .. } => {
+        &Inst::JmpCondRR { rs1, rs2, .. } | &Inst::JmpCondRR32 { rs1, rs2, .. } => {
             collector.reg_use(rs1);
             collector.reg_use(rs2);
         }
-        &Inst::LdX { dst, index,.. } => {
+        &Inst::LdX { dst, index, .. } => {
             collector.reg_def(dst);
-            collector.reg_use(index);            
+            collector.reg_use(index);
         }
         &Inst::LdDwImm { dst, .. } => {
             collector.reg_def(dst);
@@ -209,19 +209,18 @@ fn bpf_get_operands<F: Fn(VReg) -> VReg>(inst: &Inst, collector: &mut OperandCol
         &Inst::LdAbs { .. } => {
             todo!();
         }
-        &Inst::StImm { index,.. } => {
+        &Inst::StImm { index, .. } => {
             collector.reg_use(index);
         }
-        &Inst::StReg { index, value,.. } => {
+        &Inst::StReg { index, value, .. } => {
             collector.reg_use(index);
             collector.reg_use(value);
         }
-        &Inst::Le { rd, ..} | &Inst::Be { rd, .. } => {
+        &Inst::Le { rd, .. } | &Inst::Be { rd, .. } => {
             collector.reg_use(rd.to_reg());
             collector.reg_def(rd);
         }
-        &Inst::MovSignExtent {  rs, rd, .. } |
-        &Inst::MovSignExtent32 {  rs, rd, .. } => {
+        &Inst::MovSignExtent { rs, rd, .. } | &Inst::MovSignExtent32 { rs, rd, .. } => {
             collector.reg_def(rd);
             collector.reg_use(rs);
         }
