@@ -301,16 +301,7 @@ impl ABIMachineSpec for BPFABIMachineSpec {
         // Adjust the stack pointer downward for clobbers and the function fixed
         // frame (spillslots and storage slots).
         let stack_size = frame_layout.fixed_frame_storage_size + frame_layout.clobber_size;
-        if flags.unwind_info() && frame_layout.setup_area_size > 0 {
-            // The *unwind* frame (but not the actual frame) starts at the
-            // clobbers, just below the saved FP/LR pair.
-            insts.push(Inst::Unwind {
-                inst: UnwindInst::DefineNewFrame {
-                    offset_downward_to_clobbers: frame_layout.clobber_size,
-                    offset_upward_to_caller_sp: frame_layout.setup_area_size,
-                },
-            });
-        }
+
         // Store each clobbered register in order at offsets from SP,
         // placing them above the fixed frame slots.
         if stack_size > 0 {
@@ -323,14 +314,6 @@ impl ABIMachineSpec for BPFABIMachineSpec {
                     RegClass::Float => F64,
                     RegClass::Vector => unimplemented!("Vector Clobber Saves"),
                 };
-                if flags.unwind_info() {
-                    insts.push(Inst::Unwind {
-                        inst: UnwindInst::SaveReg {
-                            clobber_offset: frame_layout.clobber_size - cur_offset,
-                            reg: r_reg,
-                        },
-                    });
-                }
                 insts.push(Self::gen_store_stack(
                     StackAMode::SPOffset(-(cur_offset as i64), ty),
                     real_reg_to_reg(reg.to_reg()),
@@ -359,7 +342,7 @@ impl ABIMachineSpec for BPFABIMachineSpec {
             let rreg = reg.to_reg();
             let ty = match rreg.class() {
                 RegClass::Int => I64,
-                RegClass::Float => F64,
+                RegClass::Float => unimplemented!("Float Clobber Restores"),
                 RegClass::Vector => unimplemented!("Vector Clobber Restores"),
             };
             insts.push(Self::gen_load_stack(
